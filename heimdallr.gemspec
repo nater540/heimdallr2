@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'dry-configurable', '~> 0.8.2'
-  spec.add_dependency 'jwt', '~> 2.2.0.pre.beta.0'
+  spec.add_dependency 'jwt'
   spec.add_dependency 'graphql', '>= 1.9.3', '< 2'
   spec.add_dependency 'activesupport', '>= 5.2'
   spec.add_dependency 'argon2', '~> 2.0', '>= 2.0.2'

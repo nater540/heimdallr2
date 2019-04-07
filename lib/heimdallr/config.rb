@@ -25,6 +25,9 @@ module Heimdallr
   # @see https://www.iana.org/assignments/jwt/jwt.xhtml#claims
   setting :additional_claims, OpenStruct.new
 
+  # Default scopes to use if none are present on new tokens.
+  setting :default_scopes, []
+
   # Expiration leeway (in seconds) used to account for clock skew.
   setting :expiration_leeway, 30
 

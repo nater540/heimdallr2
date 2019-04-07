@@ -1,17 +1,20 @@
+require 'jwt'
+
 module Heimdallr
   module Token
 
     def self.included(base)
-      base.extend ClassMethods
-      base.instance_variable_set(:@claims, {})
-    end
+      base.extend(ClassMethods)
 
-    module ClassMethods
-
-      def from_request(request)
-
+      base.class_eval do
+        attr_writer :algorithm
+        def algorithm
+          @algorithm ||= Heimdallr.config.algorithm
+        end
       end
     end
+
+    PERMITTED_ALGORITHMS = %i[HS256 HS384 HS512 RS256 RS384 RS512]
 
     def claims
       @claims ||= OpenStruct.new(
@@ -27,7 +30,7 @@ module Heimdallr
     end
 
     def scopes
-      @scopes ||= []
+      @scopes ||= Heimdallr.config.default_scopes
     end
 
     # Set the scopes for this token.
@@ -46,24 +49,26 @@ module Heimdallr
       values.all? { |scope| scopes.include?(scope) }
     end
 
-    # Encodes this token record into a JWT string.
+    # Encodes this token into a JWT string.
     #
     # @return [String]
     def encode
-      # raise StandardError, I18n.t(:not_persisted, scope: 'token.errors') unless persisted?
-      # raise StandardError, I18n.t(:default_token, scope: 'token.errors') if default_token?
+      raise RuntimeError, "#{algorithm} is not a valid algorithm." unless PERMITTED_ALGORITHMS.include?(algorithm)
 
-      payload = {
-        iat: created_at.to_i,
-        exp: expires_at.to_i,
-        nbf: not_before.to_i,
-        iss: Heimdallr.config.claims.issuer,
-        aud: audience,
-        sub: subject,
-        jti: id
-      }
+      # Prepare the token payload
+      payload = resolve_claims
+      payload[:scopes] = scopes
       payload.delete_if { |_, value| value.nil? }
 
+      secret = if %i[HS256 HS384 HS512].include?(algorithm)
+          Heimdallr.config.secret_key
+        elsif %i[RS256 RS384 RS512].include?(algorithm)
+          OpenSSL::PKey::RSA.new(File.read(Heimdallr.config.secret_key_path))
+        else
+          raise StandardError, 'You are likely to be eaten by a grue.'
+        end
+
+      ::JWT.encode(payload, secret, algorithm.to_s)
     end
 
     protected
@@ -72,6 +77,12 @@ module Heimdallr
     def verify_token_claims
       leeway = Heimdallr.config.expiration_leeway
 
+    end
+
+    module ClassMethods
+      def from_request(request)
+
+      end
     end
   end
 end
